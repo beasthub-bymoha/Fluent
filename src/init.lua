@@ -6,12 +6,23 @@ local TweenService = game:GetService("TweenService")
 local Camera = game:GetService("Workspace").CurrentCamera
 local Mouse = LocalPlayer:GetMouse()
 
-local Root = script
-local Creator = require(Root.Creator)
-local ElementsTable = require(Root.Elements)
-local Acrylic = require(Root.Acrylic)
-local Components = Root.Components
-local NotificationModule = require(Components.Notification)
+local function requireFromURL(url)
+    return loadstring(game:HttpGet(url))()
+end
+
+local Creator = requireFromURL("https://raw.githubusercontent.com/beasthub-bymoha/Fluent/master/src/Creator.lua")
+local ElementsTable = requireFromURL("https://raw.githubusercontent.com/beasthub-bymoha/Fluent/master/src/Elements.lua")
+local Acrylic = requireFromURL("https://raw.githubusercontent.com/beasthub-bymoha/Fluent/master/src/Acrylic.lua")
+local Themes = requireFromURL("https://raw.githubusercontent.com/beasthub-bymoha/Fluent/master/src/Themes.lua")
+local Icons = requireFromURL("https://raw.githubusercontent.com/beasthub-bymoha/Fluent/master/src/Icons.lua")
+
+local Components = {
+    Window = requireFromURL("https://raw.githubusercontent.com/beasthub-bymoha/Fluent/master/src/Components/Window.lua"),
+    Notification = requireFromURL("https://raw.githubusercontent.com/beasthub-bymoha/Fluent/master/src/Components/Notification.lua"),
+    Assets = requireFromURL("https://raw.githubusercontent.com/beasthub-bymoha/Fluent/master/src/Components/Assets.lua"),
+    Tab = requireFromURL("https://raw.githubusercontent.com/beasthub-bymoha/Fluent/master/src/Components/Tab.lua"),
+    Dialog = requireFromURL("https://raw.githubusercontent.com/beasthub-bymoha/Fluent/master/src/Components/Dialog.lua"),
+}
 
 local New = Creator.New
 
@@ -20,14 +31,14 @@ local GUI = New("ScreenGui", {
 	Parent = RunService:IsStudio() and LocalPlayer.PlayerGui or game:GetService("CoreGui"),
 })
 ProtectGui(GUI)
-NotificationModule:Init(GUI)
+Components.Notification:Init(GUI)
 
 local Library = {
 	Version = "1.1.0",
 
 	OpenFrames = {},
 	Options = {},
-	Themes = require(Root.Themes).Names,
+	Themes = Themes.Names,
 
 	Window = nil,
 	WindowFrame = nil,
@@ -45,27 +56,15 @@ local Library = {
 }
 
 function Library:SafeCallback(Function, ...)
-	if not Function then
-		return
-	end
-
+	if not Function then return end
 	local Success, Event = pcall(Function, ...)
 	if not Success then
 		local _, i = Event:find(":%d+: ")
-
-		if not i then
-			return Library:Notify({
-				Title = "Interface",
-				Content = "Callback error",
-				SubContent = Event,
-				Duration = 5,
-			})
-		end
-
+		local sub = i and Event:sub(i + 1) or Event
 		return Library:Notify({
 			Title = "Interface",
 			Content = "Callback error",
-			SubContent = Event:sub(i + 1),
+			SubContent = sub,
 			Duration = 5,
 		})
 	end
@@ -79,10 +78,9 @@ function Library:Round(Number, Factor)
 	return Number:find("%.") and tonumber(Number:sub(1, Number:find("%.") + Factor)) or Number
 end
 
-local Icons = require(Root.Icons).assets
 function Library:GetIcon(Name)
-	if Name ~= nil and Icons["lucide-" .. Name] then
-		return Icons["lucide-" .. Name]
+	if Name ~= nil and Icons.assets["lucide-" .. Name] then
+		return Icons.assets["lucide-" .. Name]
 	end
 	return nil
 end
@@ -99,7 +97,6 @@ for _, ElementComponent in ipairs(ElementsTable) do
 		ElementComponent.Type = self.Type
 		ElementComponent.ScrollFrame = self.ScrollFrame
 		ElementComponent.Library = Library
-
 		return ElementComponent:New(Idx, Config)
 	end
 end
@@ -110,7 +107,7 @@ function Library:CreateWindow(Config)
 	assert(Config.Title, "Window - Missing Title")
 
 	if Library.Window then
-		print("You cannot create more than one window.")
+		warn("You cannot create more than one window.")
 		return
 	end
 
@@ -122,7 +119,7 @@ function Library:CreateWindow(Config)
 		Acrylic.init()
 	end
 
-	local Window = require(Components.Window)({
+	local Window = Components.Window({
 		Parent = GUI,
 		Size = Config.Size,
 		Title = Config.Title,
@@ -155,15 +152,13 @@ function Library:Destroy()
 end
 
 function Library:ToggleAcrylic(Value)
-	if Library.Window then
-		if Library.UseAcrylic then
-			Library.Acrylic = Value
-			Library.Window.AcrylicPaint.Model.Transparency = Value and 0.98 or 1
-			if Value then
-				Acrylic.Enable()
-			else
-				Acrylic.Disable()
-			end
+	if Library.Window and Library.UseAcrylic then
+		Library.Acrylic = Value
+		Library.Window.AcrylicPaint.Model.Transparency = Value and 0.98 or 1
+		if Value then
+			Acrylic.Enable()
+		else
+			Acrylic.Disable()
 		end
 	end
 end
@@ -175,7 +170,7 @@ function Library:ToggleTransparency(Value)
 end
 
 function Library:Notify(Config)
-	return NotificationModule:New(Config)
+	return Components.Notification:New(Config)
 end
 
 if getgenv then
