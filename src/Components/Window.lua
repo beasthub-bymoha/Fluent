@@ -1,4 +1,3 @@
--- i will rewrite this someday
 local UserInputService = game:GetService("UserInputService")
 local Mouse = game:GetService("Players").LocalPlayer:GetMouse()
 local Camera = game:GetService("Workspace").CurrentCamera
@@ -112,7 +111,8 @@ return function(Config)
 		BackgroundTransparency = 1,
 	}, {
 		Window.ContainerAnim,
-		Window.ContainerHolder
+		Window.ContainerHolder,
+		New("UICorner", { CornerRadius = UDim.new(0, 12) }),
 	})
 
 	Window.Root = New("Frame", {
@@ -126,6 +126,7 @@ return function(Config)
 		Window.ContainerCanvas,
 		TabFrame,
 		ResizeStartFrame,
+		New("UICorner", { CornerRadius = UDim.new(0, 12) }),
 	})
 
 	Window.TitleBar = require(script.Parent.TitleBar)({
@@ -214,21 +215,12 @@ return function(Config)
 		end
 	end
 
+	-- DRAGGING MODIFIED: Only moves ContainerCanvas instead of Root
 	Creator.AddSignal(Window.TitleBar.Frame.InputBegan, function(Input)
-		if
-			Input.UserInputType == Enum.UserInputType.MouseButton1
-			or Input.UserInputType == Enum.UserInputType.Touch
-		then
+		if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
 			Dragging = true
 			MousePos = Input.Position
-			StartPos = Window.Root.Position
-
-			if Window.Maximized then
-				StartPos = UDim2.fromOffset(
-					Mouse.X - (Mouse.X * ((OldSizeX - 100) / Window.Root.AbsoluteSize.X)),
-					Mouse.Y - (Mouse.Y * (OldSizeY / Window.Root.AbsoluteSize.Y))
-				)
-			end
+			StartPos = Window.ContainerCanvas.Position
 
 			Input.Changed:Connect(function()
 				if Input.UserInputState == Enum.UserInputState.End then
@@ -239,19 +231,13 @@ return function(Config)
 	end)
 
 	Creator.AddSignal(Window.TitleBar.Frame.InputChanged, function(Input)
-		if
-			Input.UserInputType == Enum.UserInputType.MouseMovement
-			or Input.UserInputType == Enum.UserInputType.Touch
-		then
+		if Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch then
 			DragInput = Input
 		end
 	end)
 
 	Creator.AddSignal(ResizeStartFrame.InputBegan, function(Input)
-		if
-			Input.UserInputType == Enum.UserInputType.MouseButton1
-			or Input.UserInputType == Enum.UserInputType.Touch
-		then
+		if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
 			Resizing = true
 			ResizePos = Input.Position
 		end
@@ -260,27 +246,15 @@ return function(Config)
 	Creator.AddSignal(UserInputService.InputChanged, function(Input)
 		if Input == DragInput and Dragging then
 			local Delta = Input.Position - MousePos
-			Window.Position = UDim2.fromOffset(StartPos.X.Offset + Delta.X, StartPos.Y.Offset + Delta.Y)
-			PosMotor:setGoal({
-				X = Instant(Window.Position.X.Offset),
-				Y = Instant(Window.Position.Y.Offset),
-			})
-
-			if Window.Maximized then
-				Window.Maximize(false, true, true)
-			end
+			Window.ContainerCanvas.Position = UDim2.fromOffset(StartPos.X.Offset + Delta.X, StartPos.Y.Offset + Delta.Y)
 		end
 
-		if
-			(Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch)
-			and Resizing
-		then
+		if (Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch) and Resizing then
 			local Delta = Input.Position - ResizePos
 			local StartSize = Window.Size
 
 			local TargetSize = Vector3.new(StartSize.X.Offset, StartSize.Y.Offset, 0) + Vector3.new(1, 1, 0) * Delta
-			local TargetSizeClamped =
-				Vector2.new(math.clamp(TargetSize.X, 470, 2048), math.clamp(TargetSize.Y, 380, 2048))
+			local TargetSizeClamped = Vector2.new(math.clamp(TargetSize.X, 470, 2048), math.clamp(TargetSize.Y, 380, 2048))
 
 			SizeMotor:setGoal({
 				X = Flipper.Instant.new(TargetSizeClamped.X),
@@ -301,11 +275,7 @@ return function(Config)
 	end)
 
 	Creator.AddSignal(UserInputService.InputBegan, function(Input)
-		if
-			type(Library.MinimizeKeybind) == "table"
-			and Library.MinimizeKeybind.Type == "Keybind"
-			and not UserInputService:GetFocusedTextBox()
-		then
+		if type(Library.MinimizeKeybind) == "table" and Library.MinimizeKeybind.Type == "Keybind" and not UserInputService:GetFocusedTextBox() then
 			if Input.KeyCode.Name == Library.MinimizeKeybind.Value then
 				Window:Minimize()
 			end
